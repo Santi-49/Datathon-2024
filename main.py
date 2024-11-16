@@ -21,7 +21,7 @@ TARGET = 'Listing.Price.ClosePrice'
 ID = 'Listing.ListingId'
 Features = train.dtypes.reset_index()
 Categorical = Features.loc[Features[0] == 'object', 'index'].drop(17)
-Numerical = Features.loc[Features[0] != 'object', 'index']
+
 
 # For numerical mode only
 '''
@@ -61,6 +61,20 @@ test = test.drop(columns=Columns_to_drop, axis=1)
 
 # 2) Unpack columns as lists
 # ...
+list_features = ["Characteristics.LotFeatures", "ImageData.features_reso.results", "ImageData.room_type_reso.results",
+                 "Structure.Basement", "Structure.Cooling", "Structure.Heating", "Structure.ParkingFeatures"]
+train = train.drop(columns=list_features, axis=1)
+test = test.drop(columns=list_features, axis=1)
+
+Features = train.dtypes.reset_index()
+Categorical = Features.loc[Features[0] == 'object', 'index'].drop(17)
+
+# 3) Transform categorical
+train[Categorical] = train[Categorical].fillna('nan').astype(str)
+test[Categorical] = test[Categorical].fillna('nan').astype(str)
+
+
+
 
 ################################################################################
 ################################ MODEL CATBOOST ################################
@@ -87,10 +101,10 @@ x_tr, x_val, y_tr, y_val = train_test_split(X_train, Y_train, test_size=TS, rand
 
 # Categorical positions for catboost
 Pos = list()
-#As_Categorical = Categorical.tolist()
-#As_Categorical.remove('ID')
-#for col in As_Categorical:
-#    Pos.append((X_train.columns.get_loc(col)))
+As_Categorical = Categorical.tolist()
+As_Categorical.remove(ID)
+for col in As_Categorical:
+    Pos.append((X_train.columns.get_loc(col)))
 
 # To Pool Class (for catboost only)
 pool_tr = Pool(x_tr, y_tr, cat_features=Pos)
