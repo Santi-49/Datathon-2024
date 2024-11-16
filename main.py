@@ -6,7 +6,7 @@ import os
 warnings.simplefilter(action='ignore', category=FutureWarning)  # Remove warning iteritems in Pool
 
 # Read data
-train = pd.read_csv('./data/train.csv').iloc[:5000] # Seleccionar primeras 5000 columnas
+train = pd.read_csv('./data/train.csv')#.iloc[:5000] # Seleccionar primeras 5000 columnas
 test = pd.read_csv('./data/test.csv').iloc[:5000]
 
 pd.options.mode.chained_assignment = None
@@ -36,6 +36,9 @@ train = train[columns]
 columns.pop()
 test = test[columns]
 
+# 0) Drop outliers
+train = train[train[TARGET] < 13000000]
+
 
 # 1) Drop irrelevant columns
 # Function to print in every categorical column the number of unique values contained in it
@@ -54,7 +57,7 @@ Columns_to_drop = ['Location.Address.StreetDirectionPrefix',
      'Location.Address.StreetDirectionSuffix',
     'Location.Address.StreetNumber', 'Location.Address.StreetSuffix',
      'Location.Address.UnitNumber', 'Location.Address.UnparsedAddress',
-    'Listing.Dates.CloseDate', 'Location.Address.CensusBlock']
+    'Listing.Dates.CloseDate', 'Location.Address.CensusBlock', 'Location.Address.PostalCodePlus4']
 train = train.drop(columns=Columns_to_drop, axis=1)
 test = test.drop(columns=Columns_to_drop, axis=1)
 
@@ -67,13 +70,14 @@ train = train.drop(columns=list_features, axis=1)
 test = test.drop(columns=list_features, axis=1)
 
 Features = train.dtypes.reset_index()
-Categorical = Features.loc[Features[0] == 'object', 'index'].drop(17)
+Categorical = Features.loc[(Features[0] == 'object'), 'index']
+additional_features = ['Location.Address.PostalCode']
+Categorical = pd.concat([Categorical, pd.Series(additional_features)]).drop_duplicates()
+
 
 # 3) Transform categorical
 train[Categorical] = train[Categorical].fillna('nan').astype(str)
 test[Categorical] = test[Categorical].fillna('nan').astype(str)
-
-
 
 
 ################################################################################
@@ -91,7 +95,7 @@ from catboost import CatBoostClassifier, CatBoostRegressor
 from catboost import Pool
 
 # train / test partition
-RS = 1234  # Seed for partitions (train/test) and model random part
+RS = 124  # Seed for partitions (train/test) and model random part
 TS = 0.3  # Validation size
 esr = 100  # Early stopping rounds (when validation does not improve in these rounds, stops)
 
@@ -106,9 +110,13 @@ As_Categorical.remove(ID)
 for col in As_Categorical:
     Pos.append((X_train.columns.get_loc(col)))
 
+
 # To Pool Class (for catboost only)
 pool_tr = Pool(x_tr, y_tr, cat_features=Pos)
 pool_val = Pool(x_val, y_val, cat_features=Pos)
+
+problem_column = x_tr.columns[16]
+print(f"Problematic column: {problem_column}")
 
 # By-hand paramter tuning. A grid-search is expensive
 # We test different combinations
