@@ -266,6 +266,18 @@ explainer = shap.TreeExplainer(model_catboost)
 shap_values = explainer.shap_values(X_train)
 shap.summary_plot(shap_values, X_train)
 
+# Seleccionar una instancia específica del conjunto de prueba
+sample_ind = 20  # Puedes cambiar este índice para seleccionar otra instancia
+shap_values_test = explainer.shap_values(X_test)
+
+# Convertir el shap_values_test a un objeto de tipo Explanation para la instancia seleccionada
+shap_values_instance = shap_values_test[sample_ind]
+shap_values_instance = shap.Explanation(values=shap_values_instance,
+                                        base_values=explainer.expected_value,
+                                        data=X_test.iloc[sample_ind])
+
+# Gráfico de cascada para una instancia específica
+shap.plots.waterfall(shap_values_instance, max_display=14)
 
 ################################################################################
 ################################### RESULTS ####################################
@@ -276,7 +288,6 @@ test[TARGET] = model_catboost.predict(X_test)
 catboost_submission = pd.DataFrame(test[[ID, TARGET]])
 
 catboost_submission.to_csv('submission.csv', index=False)
-len(test[ID])
 
 
 
