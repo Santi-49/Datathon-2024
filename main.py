@@ -7,7 +7,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)  # Remove warning
 
 # Read data
 train = pd.read_csv('./data/train.csv')#.iloc[:5000] # Seleccionar primeras 5000 columnas
-test = pd.read_csv('./data/test.csv').iloc[:5000]
+test = pd.read_csv('./data/test.csv')
 
 pd.options.mode.chained_assignment = None
 pd.set_option("display.max_rows", 50, "display.max_columns", None)
@@ -166,6 +166,10 @@ Categorical = pd.concat([Categorical, pd.Series(additional_features)]).drop_dupl
 train[Categorical] = train[Categorical].fillna('nan').astype(str)
 test[Categorical] = test[Categorical].fillna('nan').astype(str)
 
+train.to_csv('./data/train_fe.csv', index=False)
+test.to_csv('./data/test_fe.csv', index=False)
+Categorical.to_csv('./data/categorical.csv')
+
 
 ################################################################################
 ################################ MODEL CATBOOST ################################
@@ -245,17 +249,35 @@ model_catboost.set_params(**params)
 
 model_catboost.fit(X=pool_train)
 
+from sklearn.externals import joblib
+joblib.dump(model_catboost,'./data/model_catboost.sav')
+model_catboost_uploaded = joblib.load('./data/model_catboost.sav')
+
+################################################################################
+################################# SHAP VALUES ##################################
+################################################################################
+
+
 import shap
 import matplotlib.pyplot as plt
 
-# 1. Initialize the explainer for CatBoost
+
 explainer = shap.TreeExplainer(model_catboost)
-
-# 2. Calculate SHAP values for the training data
 shap_values = explainer.shap_values(X_train)
-
-# 3. Create a summary plot of SHAP values for all features
 shap.summary_plot(shap_values, X_train)
+
+
+################################################################################
+################################### RESULTS ####################################
+################################################################################
+
+# Prediction (All train model)
+test[TARGET] = model_catboost.predict(X_test)
+catboost_submission = pd.DataFrame(test[[ID, TARGET]])
+
+catboost_submission.to_csv('submission.csv', index=False)
+len(test[ID])
+
 
 
 
