@@ -5,8 +5,7 @@ import os
 
 warnings.simplefilter(action='ignore', category=FutureWarning)  # Remove warning iteritems in Pool
 
-# read data
-print(os.listdir("./data"))
+# Read data
 train = pd.read_csv('./data/train.csv') #.iloc[:5000] # Seleccionar primeras 5000 columnas
 test = pd.read_csv('./data/test.csv')
 
@@ -21,8 +20,13 @@ pd.set_option("display.max_rows", 50, "display.max_columns", None)
 TARGET = 'Listing.Price.ClosePrice'
 ID = 'Listing.ListingId'
 Features = train.dtypes.reset_index()
-Categorical = Features.loc[Features[0] == 'object', 'index']
+Categorical = Features.loc[Features[0] == 'object', 'index'].drop(17)
 Numerical = Features.loc[Features[0] != 'object', 'index']
+
+# For numerical mode only
+train = train.drop(Categorical, axis=1)
+test = test.drop(Categorical, axis=1)
+Categorical = []
 
 # Move ID to front and TARGET to the back
 columns = [ID] + [col for col in train.columns if col not in [ID, TARGET]] + [TARGET]
@@ -31,76 +35,16 @@ columns.pop()
 test = test[columns]
 
 
-# 1) Missings
-################################################################################
-# Function to print columns with at least n_miss missings
-def miss(ds, n_miss):
-    miss_list = list()
-    for col in list(ds):
-        if ds[col].isna().sum() >= n_miss:
-            print(col, ds[col].isna().sum(), ds[col].isna().sum()/5000)
-            miss_list.append(col)
-    return miss_list
-
-# Which columns have 1 missing at least...
-print('\n################## TRAIN ##################')
-m_tr = miss(train, 1)
-print('\n################## TEST ##################')
-m_te = miss(test, 1)
+# 1) Drop irrelevant columns
+Columns_to_drop = []
+train = train.drop(columns=Columns_to_drop, axis=1)
+test = test.drop(columns=Columns_to_drop, axis=1)
 
 
-train = train.drop(Categorical, axis=1)
-test = test.drop(Categorical, axis=1)
-Categorical = []
+# 2) Unpack columns as lists
+Columns_to_modify = []
+# ...
 
-
-
-# 2) Correlations
-################################################################################
-# Let's see if certain columns are correlated
-# or even that are the same with a "shift"
-thresholdCorrelation = 0.99
-
-def InspectCorrelated(df):
-    corrMatrix = df.corr().abs()  # Correlation Matrix
-    upperMatrix = corrMatrix.where(np.triu(np.ones(corrMatrix.shape), k=1).astype(bool))
-    correlColumns = []
-    for col in upperMatrix.columns:
-        correls = upperMatrix.loc[upperMatrix[col] > thresholdCorrelation, col].keys()
-        if len(correls) >= 1:
-            correlColumns.append(col)
-            print("\n", col, '->', end=" ")
-            for i in correls:
-                print(i, end=" ")
-    print('\nSelected columns to drop:\n', correlColumns)
-    return correlColumns, corrMatrix
-
-
-# Look at correlations in the original features
-correlColumns, corrMatrix = InspectCorrelated(train)
-
-# If we are ok, throw them:
-train = train.drop(correlColumns, axis=1)
-test = test.drop(correlColumns, axis=1)
-
-# 3) Constants
-################################################################################
-# Let's see if there is some constant column:
-def InspectConstant(df):
-    consColumns = []
-    for col in list(df):
-        if len(df[col].unique()) < 2:
-            print(df[col].dtypes, '\t', col, len(df[col].unique()))
-            consColumns.append(col)
-    print('\nSelected columns to drop:\n', consColumns)
-    return consColumns
-
-
-consColumns = InspectConstant(train.iloc[:, len(Categorical):-1])
-
-# If we are ok, throw them:
-train = train.drop(consColumns, axis=1)
-test = test.drop(consColumns, axis=1)
 
 ################################################################################
 ################################ MODEL CATBOOST ################################
