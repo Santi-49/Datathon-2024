@@ -6,8 +6,8 @@ import os
 warnings.simplefilter(action='ignore', category=FutureWarning)  # Remove warning iteritems in Pool
 
 # Read data
-train = pd.read_csv('./data/train.csv') #.iloc[:5000] # Seleccionar primeras 5000 columnas
-test = pd.read_csv('./data/test.csv')
+train = pd.read_csv('./data/train.csv').iloc[:5000] # Seleccionar primeras 5000 columnas
+test = pd.read_csv('./data/test.csv').iloc[:5000]
 
 pd.options.mode.chained_assignment = None
 pd.set_option("display.max_rows", 50, "display.max_columns", None)
@@ -24,9 +24,11 @@ Categorical = Features.loc[Features[0] == 'object', 'index'].drop(17)
 Numerical = Features.loc[Features[0] != 'object', 'index']
 
 # For numerical mode only
+'''
 train = train.drop(Categorical, axis=1)
 test = test.drop(Categorical, axis=1)
 Categorical = []
+'''
 
 # Move ID to front and TARGET to the back
 columns = [ID] + [col for col in train.columns if col not in [ID, TARGET]] + [TARGET]
@@ -36,15 +38,29 @@ test = test[columns]
 
 
 # 1) Drop irrelevant columns
-Columns_to_drop = []
+# Function to print in every categorical column the number of unique values contained in it
+def unique(ds):
+    rows = len(ds)
+    for col in Categorical:
+        if len(ds[col].unique()) / rows > 0.50:
+            print(col, len(ds[col].unique()) / rows) # Unique values / rows as a percentage
+
+print('\n################## TRAIN ##################')
+unique(train)
+print('\n################## TEST ##################')
+unique(test)
+
+Columns_to_drop = ['Location.Address.StreetDirectionPrefix',
+     'Location.Address.StreetDirectionSuffix',
+    'Location.Address.StreetNumber', 'Location.Address.StreetSuffix',
+     'Location.Address.UnitNumber', 'Location.Address.UnparsedAddress',
+    'Listing.Dates.CloseDate', 'Location.Address.CensusBlock']
 train = train.drop(columns=Columns_to_drop, axis=1)
 test = test.drop(columns=Columns_to_drop, axis=1)
 
 
 # 2) Unpack columns as lists
-Columns_to_modify = []
 # ...
-
 
 ################################################################################
 ################################ MODEL CATBOOST ################################
