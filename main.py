@@ -1,7 +1,8 @@
 import warnings
 import numpy as np
-import pandas as pd  # Install version 1.5.3 (iteritems errors)
+import pandas as pd  # Install version 1.5.3
 import os
+
 
 warnings.simplefilter(action='ignore', category=FutureWarning)  # Remove warning iteritems in Pool
 
@@ -17,18 +18,12 @@ pd.set_option("display.max_rows", 50, "display.max_columns", None)
 ################################# FEATURE ######################################
 ############################### ENGINEERING ####################################
 ################################################################################
+
 TARGET = 'Listing.Price.ClosePrice'
 ID = 'Listing.ListingId'
 Features = train.dtypes.reset_index()
-Categorical = Features.loc[Features[0] == 'object', 'index'].drop(17)
+Categorical = Features.loc[Features[0] == 'object', 'index'].drop(17) #ID
 
-
-# For numerical mode only
-'''
-train = train.drop(Categorical, axis=1)
-test = test.drop(Categorical, axis=1)
-Categorical = []
-'''
 
 # Move ID to front and TARGET to the back
 columns = [ID] + [col for col in train.columns if col not in [ID, TARGET]] + [TARGET]
@@ -36,36 +31,41 @@ train = train[columns]
 columns.pop()
 test = test[columns]
 
-# 0) Drop outliers
+
+######################## 0) Drop outliers ########################
 train = train[train[TARGET] < 13000000]
 
 
-# 1) Drop irrelevant columns
+#################### 1) Drop irrelevant columns ###################
+
 # Function to print in every categorical column the number of unique values contained in it
 def unique(ds):
     rows = len(ds)
     for col in Categorical:
         if len(ds[col].unique()) / rows > 0.50:
-            print(col, len(ds[col].unique()) / rows) # Unique values / rows as a percentage
+            print(col, len(ds[col].unique()) / rows) # Unique values / rows as a percentage
 
 print('\n################## TRAIN ##################')
 unique(train)
-print('\n################## TEST ##################')
-unique(test)
+print()
 
+# Columns with irrelevant information
 Columns_to_drop = ['Location.Address.StreetDirectionPrefix',
      'Location.Address.StreetDirectionSuffix',
     'Location.Address.StreetNumber', 'Location.Address.StreetSuffix',
      'Location.Address.UnitNumber', 'Location.Address.UnparsedAddress',
-    'Listing.Dates.CloseDate', 'Location.Address.CensusBlock', 'Location.Address.PostalCodePlus4']
+    'Listing.Dates.CloseDate', 'Location.Address.CensusBlock',
+    'Location.Address.PostalCodePlus4', 'Location.Address.StateOrProvince']
+
 train = train.drop(columns=Columns_to_drop, axis=1)
 test = test.drop(columns=Columns_to_drop, axis=1)
 
 
-# 2) Unpack columns as lists
-# ...
+############# 2) Unpack columns as lists (One hot encoding) #############
+# Featoures that need unpacking (list format)
 list_features = ["Characteristics.LotFeatures", "ImageData.features_reso.results", "ImageData.room_type_reso.results",
                 "Structure.Basement", "Structure.Cooling", "Structure.Heating", "Structure.ParkingFeatures"]
+
 def unpack_lists(train, test, list_features):
     added_cols = []
     for col in list_features:
@@ -79,15 +79,14 @@ def unpack_lists(train, test, list_features):
         new_features_df_test = expand_list_column(test, col)
 
         #Threshold for filtering columns
-        threshold = (train.shape[0] * 1) / 100
+        threshold = 0#(train.shape[0] * 1) / 100
 
         # Filter train columns based on threshold
         columns_to_keep_train = new_features_df_train.columns[new_features_df_train.sum() > threshold]
         filtered_features_df_train = new_features_df_train[columns_to_keep_train]
 
         # Filter test by ensuring alignment with train columns
-        columns_to_keep_test = coltest_in_coltrain(new_features_df_test.columns, columns_to_keep_train)
-        filtered_features_df_test = new_features_df_test[columns_to_keep_test]
+        columns_to_keep_test, filtered_features_df_test = coltest_in_coltrain(new_features_df_test.columns, columns_to_keep_train, new_features_df_test)
         added_cols.append(columns_to_keep_test)
 
         # Concatenate filtered features back into train and test DataFrames
@@ -96,25 +95,39 @@ def unpack_lists(train, test, list_features):
 
         test = pd.concat([test, filtered_features_df_test], axis=1)
         test.drop(columns=[col], inplace=True)
-
-    if len(test.columns) == len(train.columns)-1:
-        return (train, test, added_cols)
-    else:
-        raise Exception('not enough columns in test')
+    return (train, test, added_cols)
 
 
-def coltest_in_coltrain(cols_test, cols_train):
-    """
-    Keep columns that both lists have in common.
+def unpack_lists(train, test, list_features):
+    added_cols = []
+    for col in list_features:
 
-    Returns:
-    - list: A list with common columns.
-    """
-    common_cols = []
-    for col in cols_test:
-        if col in cols_train:
-            common_cols.append(col)
-    return common_cols
+        if col not in train.columns:
+            print(f"Column '{col}' not found in train DataFrame.")
+            continue  # Skip processing for missing columns
+
+        # Expand list columns into one-hot encoded features
+        new_features_df_train = expand_list_column(train, col)
+        new_features_df_test = expand_list_column(test, col)
+
+        #Threshold for filtering columns
+        threshold = 0#(train.shape[0] * 1) / 100
+
+        # Filter train columns based on threshold
+        columns_to_keep_train = new_features_df_train.columns[new_features_df_train.sum() > threshold]
+        filtered_features_df_train = new_features_df_train[columns_to_keep_train]
+
+        # Filter test by ensuring alignment with train columns
+        columns_to_keep_test, filtered_features_df_test = coltest_in_coltrain(new_features_df_test.columns, columns_to_keep_train, new_features_df_test)
+        added_cols.append(columns_to_keep_test)
+
+        # Concatenate filtered features back into train and test DataFrames
+        train = pd.concat([train, filtered_features_df_train], axis=1)
+        train.drop(columns=[col], inplace=True)
+
+        test = pd.concat([test, filtered_features_df_test], axis=1)
+        test.drop(columns=[col], inplace=True)
+    return (train, test, added_cols)
 
 
 def expand_list_column(df, column):
@@ -147,28 +160,38 @@ def expand_list_column(df, column):
 
     return new_df
 
+
+print('\n> Unpacking train and test data columns...')
 train, test, cols = unpack_lists(train, test, list_features)
 added_cols = [col for feat in cols for col in feat]
+print('> Finished unpacking.\n')
 
+# Move ID and TARGET
 columns = [ID] + [col for col in train.columns if col not in [ID, TARGET]] + [TARGET]
 train = train[columns]
 
 
-# 3) Change cat features
+################### 3) Change cat features ###################
 Features = train.dtypes.reset_index()
-Categorical = Features.loc[(Features[0] == 'object'), 'index']
+Categorical = Features.loc[(Features[0] == 'object'), 'index'].drop(0)
 added_cols.append('Location.Address.PostalCode')
 Categorical = pd.concat([Categorical, pd.Series(added_cols)]).drop_duplicates()
 
+# Transform categorical
+train[Categorical] = train[Categorical].fillna('nan').astype(str)
+test[Categorical] = test[Categorical].fillna('nan').astype(str)
 
-# 3) Transform categorical
-train[Categorical] = train[Categorical].fillna('nann').astype(str)
-test[Categorical] = test[Categorical].fillna('nann').astype(str)
+############################ EXPORT DATA #######################################
+from data_module import *
 
-train.to_csv('./data/train_fe.csv', index=False)
-test.to_csv('./data/test_fe.csv', index=False)
-Categorical.to_csv('./data/categorical.csv')
+export_train_test(train, test, Categorical)
 
+############################ IMPORT DATA #######################################
+'''
+TARGET = 'Listing.Price.ClosePrice'
+ID = 'Listing.ListingId'
+train, test, Categorical = import_train_test()
+'''
 
 ################################################################################
 ################################ MODEL CATBOOST ################################
@@ -179,18 +202,14 @@ X_train = train[pred].reset_index(drop=True)
 Y_train = train[TARGET].reset_index(drop=True)
 X_test = test[pred].reset_index(drop=True)
 
-X_train.to_csv('./data/X_train.csv', index=False)
-Y_train.to_csv('./data/Y_train.csv', index=False)
-X_test.to_csv('./data/X_test.csv', index=False)
-
 
 # 1) For expensive models (catboost) we first try with validation set (no cv)
-################################################################################
+
 from catboost import CatBoostClassifier, CatBoostRegressor
 from catboost import Pool
 
 # train / test partition
-RS = 124  # Seed for partitions (train/test) and model random part
+RS = 1234  # Seed for partitions (train/test) and model random part
 TS = 0.3  # Validation size
 esr = 100  # Early stopping rounds (when validation does not improve in these rounds, stops)
 
@@ -201,7 +220,6 @@ x_tr, x_val, y_tr, y_val = train_test_split(X_train, Y_train, test_size=TS, rand
 # Categorical positions for catboost
 Pos = list()
 As_Categorical = Categorical.tolist()
-As_Categorical.remove(ID)
 for col in As_Categorical:
     Pos.append((X_train.columns.get_loc(col)))
 
@@ -211,9 +229,9 @@ pool_tr = Pool(x_tr, y_tr, cat_features=Pos)
 pool_val = Pool(x_val, y_val, cat_features=Pos)
 
 
-# By-hand paramter tuning. A grid-search is expensive
+# By-hand paramter tuning
 # We test different combinations
-# See parameter options here:
+# Parameter options here:
 # "https://catboost.ai/en/docs/references/training-parameters/"
 model_catboost_val = CatBoostRegressor(
     loss_function='MAE',
@@ -235,7 +253,6 @@ params = {'objective': 'MAE',
           'random_seed': RS}
 
 '''
-
 model_catboost_val.set_params(**params)
 
 print('\nCatboost Fit (Validation)...\n')
@@ -243,6 +260,8 @@ model_catboost_val.fit(X=pool_tr,
                        eval_set=pool_val,
                        early_stopping_rounds=esr)
 '''
+
+############################ TRAIN WITH ALL DATA ###########################
 nrounds = 3867
 print('\nCatboost Optimal Fit with %d rounds...\n' % nrounds)
 pool_train = Pool(X_train, Y_train, cat_features=Pos)
@@ -253,18 +272,22 @@ model_catboost.set_params(**params)
 
 model_catboost.fit(X=pool_train)
 
-import joblib
-joblib.dump(model_catboost,'./data/model_catboost.sav')
-model_catboost_uploaded = joblib.load('./data/model_catboost.sav')
+############################### SAVE MODEL #####################################
+from data_module import *
 
+export_model(model_catboost)
+
+############################## IMPORT MODEL ####################################
+'''
+model_catboost = import_model()
+'''
 ################################################################################
 ################################# SHAP VALUES ##################################
 ################################################################################
 
-
 from shap_module import *
 
-exp = explainer(model_catboost_uploaded)
+exp = explainer(model_catboost)
 shap_values = shap_summary(exp, X_train)
 shap_values_test = shap_explain(exp, X_test, 100)
 
@@ -273,7 +296,7 @@ shap_values_test = shap_explain(exp, X_test, 100)
 ################################################################################
 
 # Prediction (All train model)
-test[TARGET] = model_catboost_uploaded.predict(X_test)
+test[TARGET] = model_catboost.predict(X_test)
 catboost_submission = pd.DataFrame(test[[ID, TARGET]])
 
 catboost_submission.to_csv('submission.csv', index=False)
