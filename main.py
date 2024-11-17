@@ -262,26 +262,11 @@ model_catboost_uploaded = joblib.load('./data/model_catboost.sav')
 ################################################################################
 
 
-import shap
-import matplotlib.pyplot as plt
+from shap_module import *
 
-
-explainer = shap.TreeExplainer(model_catboost)
-shap_values = explainer.shap_values(X_train)
-shap.summary_plot(shap_values, X_train)
-
-# Seleccionar una instancia específica del conjunto de prueba
-sample_ind = 20  # Puedes cambiar este índice para seleccionar otra instancia
-shap_values_test = explainer.shap_values(X_test)
-
-# Convertir el shap_values_test a un objeto de tipo Explanation para la instancia seleccionada
-shap_values_instance = shap_values_test[sample_ind]
-shap_values_instance = shap.Explanation(values=shap_values_instance,
-                                        base_values=explainer.expected_value,
-                                        data=X_test.iloc[sample_ind])
-
-# Gráfico de cascada para una instancia específica
-shap.plots.waterfall(shap_values_instance, max_display=14)
+exp = explainer(model_catboost_uploaded)
+shap_values = shap_summary(exp, X_train)
+shap_values_test = shap_explain(exp, X_test, 100)
 
 ################################################################################
 ################################### RESULTS ####################################

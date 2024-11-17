@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import joblib
 import pandas as pd
 
-from main import X_train
 
 
 def explainer(model_catboost):
@@ -43,6 +42,11 @@ X_train[Categorical] = X_train[Categorical].fillna('nann').astype(str)
 X_test[Categorical] = X_test[Categorical].fillna('nann').astype(str)
 
 
-exp = explainer(model_catboost_uploaded)
-shap_values = shap_summary(exp, X_train)
-shap_values_test = shap_explain(exp, X_test, sample_ind = 100)
+def main():
+    exp = explainer(model_catboost_uploaded)
+    shap_values = shap_summary(exp, X_train)
+    shap_values_test = shap_explain(exp, X_test, 100)
+
+if __name__ == '__main__':
+    main()
+
