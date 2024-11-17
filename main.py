@@ -96,7 +96,11 @@ def unpack_lists(train, test, list_features):
 
         test = pd.concat([test, filtered_features_df_test], axis=1)
         test.drop(columns=[col], inplace=True)
-    return (train, test, added_cols)
+
+    if len(test.columns) == len(train.columns)-1:
+        return (train, test, added_cols)
+    else:
+        raise Exception('not enough columns in test')
 
 
 def coltest_in_coltrain(cols_test, cols_train):
@@ -150,21 +154,16 @@ columns = [ID] + [col for col in train.columns if col not in [ID, TARGET]] + [TA
 train = train[columns]
 
 
-'''
-train = train.drop(columns=list_features, axis=1)
-test = test.drop(columns=list_features, axis=1)
-'''
-
 # 3) Change cat features
 Features = train.dtypes.reset_index()
 Categorical = Features.loc[(Features[0] == 'object'), 'index']
-additional_features = added_cols.append('Location.Address.PostalCode')
-Categorical = pd.concat([Categorical, pd.Series(additional_features)]).drop_duplicates()
+added_cols.append('Location.Address.PostalCode')
+Categorical = pd.concat([Categorical, pd.Series(added_cols)]).drop_duplicates()
 
 
 # 3) Transform categorical
-train[Categorical] = train[Categorical].fillna('nan').astype(str)
-test[Categorical] = test[Categorical].fillna('nan').astype(str)
+train[Categorical] = train[Categorical].fillna('nann').astype(str)
+test[Categorical] = test[Categorical].fillna('nann').astype(str)
 
 train.to_csv('./data/train_fe.csv', index=False)
 test.to_csv('./data/test_fe.csv', index=False)
@@ -179,6 +178,11 @@ pred = list(train)[1:-1]
 X_train = train[pred].reset_index(drop=True)
 Y_train = train[TARGET].reset_index(drop=True)
 X_test = test[pred].reset_index(drop=True)
+
+X_train.to_csv('./data/X_train.csv', index=False)
+Y_train.to_csv('./data/Y_train.csv', index=False)
+X_test.to_csv('./data/X_test.csv', index=False)
+
 
 # 1) For expensive models (catboost) we first try with validation set (no cv)
 ################################################################################
@@ -249,7 +253,7 @@ model_catboost.set_params(**params)
 
 model_catboost.fit(X=pool_train)
 
-from sklearn.externals import joblib
+import joblib
 joblib.dump(model_catboost,'./data/model_catboost.sav')
 model_catboost_uploaded = joblib.load('./data/model_catboost.sav')
 
@@ -284,7 +288,7 @@ shap.plots.waterfall(shap_values_instance, max_display=14)
 ################################################################################
 
 # Prediction (All train model)
-test[TARGET] = model_catboost.predict(X_test)
+test[TARGET] = model_catboost_uploaded.predict(X_test)
 catboost_submission = pd.DataFrame(test[[ID, TARGET]])
 
 catboost_submission.to_csv('submission.csv', index=False)
