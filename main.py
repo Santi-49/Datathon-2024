@@ -41,13 +41,48 @@ train = train[train[TARGET] < 13000000]
 # Function to print in every categorical column the number of unique values contained in it
 def unique(ds):
     rows = len(ds)
+    print('Colums with unique values:\n')
     for col in Categorical:
         if len(ds[col].unique()) / rows > 0.50:
             print(col, len(ds[col].unique()) / rows) # Unique values / rows as a percentage
 
-print('\n################## TRAIN ##################')
+
+print('\n################## UNIQUENESS ##################')
 unique(train)
 print()
+
+def missing_data(train, perc):
+    """
+    Displays and returns missing data information.
+
+    Parameters:
+    - train (pd.DataFrame): Input DataFrame.
+
+    Returns:
+    - pd.DataFrame: DataFrame containing columns with missing counts and percentages.
+    """
+    # Calculate missing counts and percentages
+    missing_data = train.isnull().sum()
+    missing_percent = (missing_data / len(train)) * 100
+
+    # Filter for columns with missing values
+    missing_summary = pd.DataFrame({
+        'Missing_Count': missing_data,
+        'Missing_Percent': missing_percent
+    }).sort_values(by='Missing_Count', ascending=False)
+
+    # Filter for columns with any missing values
+    missing_summary = missing_summary[missing_summary['Missing_Percent'] >= perc]
+
+    # Display columns with missing values
+    print("Columns with missing values:")
+    print(missing_summary)
+
+
+print('\n################## MISSING VAL ##################')
+missing_data(train, 90)
+print()
+
 
 # Columns with irrelevant information
 Columns_to_drop = ['Location.Address.StreetDirectionPrefix',
@@ -98,36 +133,34 @@ def unpack_lists(train, test, list_features):
     return (train, test, added_cols)
 
 
-def unpack_lists(train, test, list_features):
-    added_cols = []
-    for col in list_features:
+def coltest_in_coltrain(cols_test, cols_train, features_test):
+    """
+    Align test columns with train columns, filling missing columns with zeros.
 
-        if col not in train.columns:
-            print(f"Column '{col}' not found in train DataFrame.")
-            continue  # Skip processing for missing columns
+    Parameters:
+    - cols_test (list): List of test set columns.
+    - cols_train (list): List of train set columns to align with.
+    - features_test (pd.DataFrame): Test features DataFrame.
 
-        # Expand list columns into one-hot encoded features
-        new_features_df_train = expand_list_column(train, col)
-        new_features_df_test = expand_list_column(test, col)
+    Returns:
+    - list: A list of columns that overlap between train and test.
+    - pd.DataFrame: The aligned test DataFrame.
+    """
+    # Identify common and missing columns
+    common_cols = [col for col in cols_test if col in cols_train]
+    missing_cols = [col for col in cols_train if col not in cols_test]
 
-        #Threshold for filtering columns
-        threshold = 0#(train.shape[0] * 1) / 100
+    # Filter the test DataFrame for common columns
+    aligned_test = features_test[common_cols].copy() # Use .copy() to avoid SettingWithCopyWarning
 
-        # Filter train columns based on threshold
-        columns_to_keep_train = new_features_df_train.columns[new_features_df_train.sum() > threshold]
-        filtered_features_df_train = new_features_df_train[columns_to_keep_train]
+    # Add missing columns with zeros using .loc
+    for col in missing_cols:
+        aligned_test.loc[:, col] = 0
 
-        # Filter test by ensuring alignment with train columns
-        columns_to_keep_test, filtered_features_df_test = coltest_in_coltrain(new_features_df_test.columns, columns_to_keep_train, new_features_df_test)
-        added_cols.append(columns_to_keep_test)
+    # Ensure column order matches the train set
+    aligned_test = aligned_test[cols_train]
 
-        # Concatenate filtered features back into train and test DataFrames
-        train = pd.concat([train, filtered_features_df_train], axis=1)
-        train.drop(columns=[col], inplace=True)
-
-        test = pd.concat([test, filtered_features_df_test], axis=1)
-        test.drop(columns=[col], inplace=True)
-    return (train, test, added_cols)
+    return common_cols, aligned_test
 
 
 def expand_list_column(df, column):
@@ -235,7 +268,7 @@ pool_val = Pool(x_val, y_val, cat_features=Pos)
 # "https://catboost.ai/en/docs/references/training-parameters/"
 model_catboost_val = CatBoostRegressor(
     loss_function='MAE',
-    iterations=5000,  # Very high value, to find the optimum
+    iterations=7000,  # Very high value, to find the optimum
     od_type='Iter',  # Overfitting detector set to "iterations" or number of trees
     od_wait=esr,
     random_seed=RS,  # Random seed for reproducibility
@@ -244,11 +277,11 @@ model_catboost_val = CatBoostRegressor(
 
 # "Technical" parameters of the model:
 params = {'objective': 'MAE',
-          'learning_rate': 0.1,  # learning rate, lower -> slower but better prediction
+          'learning_rate': 0.05,  # learning rate, lower -> slower but better prediction
           # 'depth': 4,  # Depth of the trees (values betwwen 5 and 10, higher -> more overfitting)
           'min_data_in_leaf': 150,
-          'l2_leaf_reg': 15,  # L2 regularization (between 3 and 20, higher -> less overfitting)
-          'rsm': 0.5,  # % of features to consider in each split (lower -> faster and reduces overfitting)
+          'l2_leaf_reg': 18,  # L2 regularization (between 3 and 20, higher -> less overfitting)
+          'rsm': 0.4,  # % of features to consider in each split (lower -> faster and reduces overfitting)
           'subsample': 0.8,  # Sample rate for bagging
           'random_seed': RS}
 
@@ -262,7 +295,7 @@ model_catboost_val.fit(X=pool_tr,
 '''
 
 ############################ TRAIN WITH ALL DATA ###########################
-nrounds = 3867
+nrounds = 7247
 print('\nCatboost Optimal Fit with %d rounds...\n' % nrounds)
 pool_train = Pool(X_train, Y_train, cat_features=Pos)
 model_catboost = CatBoostRegressor(n_estimators=nrounds,
@@ -275,11 +308,12 @@ model_catboost.fit(X=pool_train)
 ############################### SAVE MODEL #####################################
 from data_module import *
 
-export_model(model_catboost)
+export_model(model_catboost, './data/model_catboost3.sav')
 
 ############################## IMPORT MODEL ####################################
 '''
 model_catboost = import_model()
+model_catboost = import_model('./data/model_catboost3.sav')
 '''
 ################################################################################
 ################################# SHAP VALUES ##################################
