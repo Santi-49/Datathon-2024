@@ -49,13 +49,14 @@ def objective_reg(trial, pool_tr, pool_val, esr, RS):
 
 
 def optimice_regresor(pool_tr, pool_val, esr, RS, n_trials):
-    study = optuna.create_study(direction='minimize')
-    try:
-        study.optimize(lambda trial: objective_reg(trial, pool_tr, pool_val, esr, RS), n_trials=n_trials)
-    except KeyboardInterrupt:
-        print("Best Value: ", study.best_value)
-        print("Best parameters:", study.best_params)
-        exit(0)
+    storage_path = f"sqlite:///optuna_study{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.db"
+    
+    study = optuna.create_study(direction='minimize',
+                                storage=storage_path,
+                                study_name="regressor_optimization",
+                                load_if_exists=True)
+    
+    study.optimize(lambda trial: objective_reg(trial, pool_tr, pool_val, esr, RS), n_trials=n_trials)
 
     #study.optimize(lambda trial: objective_reg(trial, pool_tr, pool_val, esr, RS), n_trials=n_trials)
 
@@ -91,5 +92,5 @@ if __name__ == "__main__":
     pool_tr = Pool(x_tr, y_tr, cat_features=Pos)
     pool_val = Pool(x_val, y_val, cat_features=Pos)
 
-    optimice_regresor(pool_tr, pool_val, esr, RS, 300)
+    optimice_regresor(pool_tr, pool_val, esr, RS, 50)
 
