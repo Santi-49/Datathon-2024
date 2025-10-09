@@ -1,0 +1,7 @@
+numpy
+pandas==1.5.3
+catboost
+scikit-learn
+shap
+matplotlib
+joblib

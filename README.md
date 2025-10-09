@@ -22,6 +22,46 @@ This rigorous preprocessing was vital for improving the chatbot’s reliability 
 
 By preparing the data in this manner, we ensured that the categorical variables were structured effectively, enabling the predictive model to perform with greater accuracy and reliability.
 
+## Project Structure
+
+*   `main.py`: The main script for the project. It handles data loading, feature engineering, model training, and prediction generation.
+*   `data_module.py`: Contains helper functions for importing and exporting data and the trained model.
+*   `shap_module.py`: Includes functions for generating and plotting SHAP (SHapley Additive exPlanations) values to interpret the model's predictions.
+*   `requirements.txt`: Lists the Python dependencies required to run the project.
+
+## Setup
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-username/Datathon-2024.git
+    cd Datathon-2024
+    ```
+2.  **Create a virtual environment (recommended):**
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+    ```
+3.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+## Usage
+
+To run the full pipeline, including data preprocessing, model training, and prediction generation, execute the main script:
+
+```bash
+python main.py
+```
+
+This will perform the following steps:
+1.  Load the raw training and testing data from the `./data/` directory.
+2.  Apply feature engineering and save the processed data.
+3.  Train a CatBoost regression model.
+4.  Save the trained model to `./data/model_catboost3.sav`.
+5.  Generate SHAP plots for model interpretability.
+6.  Create a `submission.csv` file containing the predictions for the test set.
+
 
 
 

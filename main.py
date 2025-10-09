@@ -40,6 +40,11 @@ train = train[train[TARGET] < 13000000]
 
 # Function to print in every categorical column the number of unique values contained in it
 def unique(ds):
+    """Prints categorical columns with a high percentage of unique values.
+
+    Args:
+        ds (pd.DataFrame): The input dataframe.
+    """
     rows = len(ds)
     print('Colums with unique values:\n')
     for col in Categorical:
@@ -52,14 +57,11 @@ unique(train)
 print()
 
 def missing_data(train, perc):
-    """
-    Displays and returns missing data information.
+    """Displays columns with a high percentage of missing values.
 
-    Parameters:
-    - train (pd.DataFrame): Input DataFrame.
-
-    Returns:
-    - pd.DataFrame: DataFrame containing columns with missing counts and percentages.
+    Args:
+        train (pd.DataFrame): The input dataframe.
+        perc (int): The percentage threshold for missing values.
     """
     # Calculate missing counts and percentages
     missing_data = train.isnull().sum()
@@ -102,6 +104,16 @@ list_features = ["Characteristics.LotFeatures", "ImageData.features_reso.results
                 "Structure.Basement", "Structure.Cooling", "Structure.Heating", "Structure.ParkingFeatures"]
 
 def unpack_lists(train, test, list_features):
+    """Unpacks columns containing lists into one-hot encoded features.
+
+    Args:
+        train (pd.DataFrame): The training dataframe.
+        test (pd.DataFrame): The testing dataframe.
+        list_features (list): A list of column names to unpack.
+
+    Returns:
+        tuple: A tuple containing the modified training and testing dataframes, and a list of the new column names.
+    """
     added_cols = []
     for col in list_features:
 
@@ -134,17 +146,15 @@ def unpack_lists(train, test, list_features):
 
 
 def coltest_in_coltrain(cols_test, cols_train, features_test):
-    """
-    Align test columns with train columns, filling missing columns with zeros.
+    """Aligns test columns with train columns, filling missing columns with zeros.
 
-    Parameters:
-    - cols_test (list): List of test set columns.
-    - cols_train (list): List of train set columns to align with.
-    - features_test (pd.DataFrame): Test features DataFrame.
+    Args:
+        cols_test (list): List of test set columns.
+        cols_train (list): List of train set columns to align with.
+        features_test (pd.DataFrame): Test features DataFrame.
 
     Returns:
-    - list: A list of columns that overlap between train and test.
-    - pd.DataFrame: The aligned test DataFrame.
+        tuple: A tuple containing a list of columns that overlap between train and test, and the aligned test DataFrame.
     """
     # Identify common and missing columns
     common_cols = [col for col in cols_test if col in cols_train]
@@ -164,15 +174,14 @@ def coltest_in_coltrain(cols_test, cols_train, features_test):
 
 
 def expand_list_column(df, column):
-    """
-    Expands a column with list-like elements into multiple one-hot encoded columns.
+    """Expands a column with list-like elements into multiple one-hot encoded columns.
 
-    Parameters:
-    - df (pd.DataFrame): The input DataFrame.
-    - column (str): The column name to process.
+    Args:
+        df (pd.DataFrame): The input DataFrame.
+        column (str): The column name to process.
 
     Returns:
-    - pd.DataFrame: A new DataFrame with one-hot encoded columns.
+        pd.DataFrame: A new DataFrame with one-hot encoded columns.
     """
     # Ensure the column has list-like elements
     expanded_data = df[column].dropna().apply(lambda x: eval(x) if isinstance(x, str) else x)
