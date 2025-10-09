@@ -5,16 +5,43 @@ import pandas as pd
 
 
 def explainer(model_catboost):
+    """Creates a SHAP TreeExplainer for the given model.
+
+    Args:
+        model_catboost: The trained CatBoost model.
+
+    Returns:
+        shap.TreeExplainer: The SHAP explainer.
+    """
     return shap.TreeExplainer(model_catboost)
 
 
 def shap_summary(explainer, X_train):
+    """Generates and plots a SHAP summary plot.
+
+    Args:
+        explainer (shap.TreeExplainer): The SHAP explainer.
+        X_train (pd.DataFrame): The training data.
+
+    Returns:
+        np.ndarray: The SHAP values.
+    """
     shap_values = explainer.shap_values(X_train)
     shap.summary_plot(shap_values, X_train)
     return shap_values
 
 
 def shap_explain(explainer, X_test, sample_ind):
+    """Generates and plots a SHAP waterfall plot for a specific instance.
+
+    Args:
+        explainer (shap.TreeExplainer): The SHAP explainer.
+        X_test (pd.DataFrame): The test data.
+        sample_ind (int): The index of the instance to explain.
+
+    Returns:
+        np.ndarray: The SHAP values for the test data.
+    """
     shap_values_test = explainer.shap_values(X_test)
 
     # Convertir el shap_values_test a un objeto de tipo Explanation para la instancia seleccionada
@@ -40,6 +67,7 @@ def shap_explain(explainer, X_test, sample_ind):
 
 
 def main():
+    """Main function to load data, model and generate SHAP plots."""
     TARGET = 'Listing.Price.ClosePrice'
     ID = 'Listing.ListingId'
 
