@@ -1,66 +1,151 @@
-# Datathon-2024
+# Real Estate Price Prediction Model
 
-## 
+## Project Overview
 
-## Catboost
+This project implements an advanced machine learning pipeline for predicting residential property prices in the city of Chicago, Illinois, using a comprehensive dataset of real estate listings. The solution leverages CatBoost regression with sophisticated feature engineering and model interpretability techniques to deliver accurate property valuations.
 
-We have chosen to utilize CatBoost (short for Categorical Boosting), one of the most advanced and precise machine learning models, to tackle this challenge. Developed by Yandex, CatBoost is a state-of-the-art gradient boosting library designed to handle both numerical and categorical data with exceptional efficiency. It excels in supervised machine learning tasks such as classification, regression, and ranking.
+The project demonstrates end-to-end data science capabilities including data preprocessing, feature engineering, model training with hyperparameter optimization, and model interpretation using SHAP (SHapley Additive exPlanations) values.
 
-The decision to adopt CatBoost over other models stems from the nature of this problem, which involves datasets with a significant number of categorical features and demands high accuracy and computational efficiency. CatBoost’s ability to achieve state-of-the-art performance in various real-world applications is a testament to its advanced implementation of gradient boosting algorithms.
+## Business Problem
 
-Moreover, CatBoost optimizes predictions by seamlessly handling categorical variables without extensive preprocessing, such as one-hot encoding, which can be both time-consuming and prone to error. Its robust scalability across both CPU and GPU environments ensures efficient training and inference, making it a versatile choice for academic research and production-scale projects alike.
+Predicting accurate real estate prices is critical for buyers, sellers, and financial institutions. This project addresses the challenge of forecasting property closing prices based on historical transaction data, property characteristics, and location features across nearly a year of market activity in Illinois.
 
-By leveraging CatBoost’s unique features, we aim to enhance the precision and reliability of our predictions, meeting the challenges of this task with the most suitable and powerful machine learning solution available.
+## Technical Approach
 
-## Data filtering and cleaning
+### Model Selection: CatBoost Regressor
 
-To predict building prices with a two-month outlook, based on a comprehensive dataset spanning nearly a year of property data from Illinois, USA, we chose to leverage a machine learning model integrated with catboost technology. To ensure the model’s optimal performance, it was essential to meticulously filter and organize the dataset for analysis.
+CatBoost (Categorical Boosting) was selected as the primary modeling framework for several key technical reasons:
 
-The first step involved eliminating columns irrelevant to the prediction task, such as those containing street address formats, purchase or sale dates, and other non-essential details. This data has been erased by a criteria of granularity, cause these columns are at an intern level too deep and specific for our prediction orientation. Additionally, we applied specific criteria to enhance both the model’s efficiency and accuracy. One critical criterion was analyzing the number of unique values in each categorical column, as excessive variability can undermine the model's predictive power.
+**Native Categorical Handling**: CatBoost processes categorical features directly without requiring manual encoding transformations, reducing preprocessing complexity and potential information loss.
 
-This rigorous preprocessing was vital for improving the chatbot’s reliability and the precision of its predictions. As part of this process, one-hot encoding was employed—a widely used data preprocessing technique in machine learning and data analysis. One-hot encoding transforms categorical variables into a machine-readable numerical format by converting each category into a binary column (0 or 1). This approach preserves the categorical nature of the data without introducing artificial ordering among the categories.
+**Gradient Boosting Excellence**: Developed by Yandex, CatBoost implements state-of-the-art gradient boosting algorithms optimized for both numerical and categorical data, consistently achieving superior performance on structured data tasks.
 
-By preparing the data in this manner, we ensured that the categorical variables were structured effectively, enabling the predictive model to perform with greater accuracy and reliability.
+**Regularization and Overfitting Prevention**: Built-in ordered boosting and symmetric tree structures provide robust protection against overfitting, particularly valuable when working with high-cardinality categorical features.
 
-## Project Structure
+**Computational Efficiency**: The framework supports both CPU and GPU execution, enabling scalable training on large datasets while maintaining production-ready inference speeds.
 
-*   `main.py`: The main script for the project. It handles data loading, feature engineering, model training, and prediction generation.
-*   `data_module.py`: Contains helper functions for importing and exporting data and the trained model.
-*   `shap_module.py`: Includes functions for generating and plotting SHAP (SHapley Additive exPlanations) values to interpret the model's predictions.
-*   `requirements.txt`: Lists the Python dependencies required to run the project.
+### Data Engineering Pipeline
 
-## Setup
+The data preprocessing and feature engineering pipeline implements several critical steps:
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-username/Datathon-2024.git
-    cd Datathon-2024
-    ```
-2.  **Create a virtual environment (recommended):**
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-    ```
-3.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+**Outlier Detection and Removal**: Statistical analysis identified and removed extreme outliers in the target variable (properties exceeding $13 million) to improve model robustness and prevent skewed predictions.
 
-## Usage
+**Feature Relevance Analysis**: Systematic evaluation of feature importance eliminated highly granular columns with limited predictive power, including specific street addresses, transaction dates, and administrative identifiers. This dimensionality reduction enhanced model efficiency without sacrificing accuracy.
 
-To run the full pipeline, including data preprocessing, model training, and prediction generation, execute the main script:
+**Categorical Feature Optimization**: Analysis of unique value distributions in categorical columns identified features with excessive cardinality that could introduce noise. Features were filtered based on a 50% uniqueness threshold to maintain signal-to-noise ratio.
 
+**List-Type Feature Unpacking**: Complex features stored as list structures (e.g., lot features, basement types, cooling systems, parking features) were systematically unpacked into binary indicator variables through custom one-hot encoding logic, preserving the granularity of multi-valued attributes.
+
+**Missing Data Strategy**: Missing values in categorical features were explicitly encoded as 'nan' strings rather than dropped, allowing the model to learn patterns associated with missing information.
+
+**Train-Test Consistency**: Rigorous alignment procedures ensured that test set features matched the training set schema, with missing columns initialized to zero to prevent prediction failures.
+
+### Model Training and Optimization
+
+The training process employed a validation-based approach to optimize model performance:
+
+**Hyperparameter Tuning**: Systematic exploration of key parameters including learning rate (0.05), L2 regularization (18), minimum data in leaf (150), and feature subsampling (40%) to balance bias-variance tradeoff.
+
+**Early Stopping**: Implementation of early stopping with 100-round patience on validation sets to identify optimal iteration counts (7,247 iterations) and prevent overfitting.
+
+**Loss Function**: Mean Absolute Error (MAE) was selected as the primary optimization objective, providing robust performance against outliers while maintaining interpretability for stakeholders.
+
+**Random Seed Control**: Consistent random seeds across train-test splits and model initialization ensure reproducibility of results.
+
+### Model Interpretability
+
+SHAP (SHapley Additive exPlanations) analysis provides transparent insights into model decision-making:
+
+**Global Feature Importance**: Summary plots reveal which features drive predictions across the entire dataset, enabling feature selection and domain understanding.
+
+**Local Explanations**: Waterfall plots for individual predictions decompose the contribution of each feature to specific property valuations, supporting explainability requirements.
+
+**Expected Value Baseline**: SHAP values are calculated relative to the model's expected prediction, quantifying both positive and negative feature impacts.
+
+## Project Architecture
+
+```
+main.py              - End-to-end pipeline orchestration
+data_module.py       - Data I/O and model persistence utilities
+shap_module.py       - SHAP explainer implementation and visualization
+requirements.txt     - Python dependency specifications
+data/
+  train.csv          - Historical property transaction data
+  test.csv           - Properties requiring price predictions
+  train_fe.csv       - Engineered training features
+  test_fe.csv        - Engineered test features
+  categorical.csv    - Categorical feature index
+  model_catboost.sav - Serialized trained model
+submission.csv       - Final price predictions
+```
+
+## Key Technical Components
+
+**main.py**: Executes the complete machine learning workflow including data loading, feature engineering, model training with hyperparameter optimization, SHAP value generation, and prediction export.
+
+**data_module.py**: Provides abstraction layer for data serialization and deserialization using Pandas CSV operations and joblib model persistence, ensuring consistent data handling across pipeline stages.
+
+**shap_module.py**: Implements SHAP TreeExplainer for gradient boosting models, generating both global summary plots and local waterfall explanations for model interpretation.
+
+## Technologies and Libraries
+
+**Core ML Framework**: CatBoost 1.2+ for gradient boosted decision trees  
+**Data Processing**: Pandas 1.5.3, NumPy for efficient dataframe operations  
+**Model Evaluation**: Scikit-learn for train-test splitting and metrics  
+**Model Interpretation**: SHAP for explainable AI  
+**Visualization**: Matplotlib for SHAP plot rendering  
+**Model Persistence**: Joblib for efficient model serialization
+
+## Installation and Setup
+
+**Clone the Repository**:
+```bash
+git clone https://github.com/Santi-49/Datathon-2024.git
+cd Datathon-2024
+```
+
+**Create Virtual Environment** (recommended):
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+**Install Dependencies**:
+```bash
+pip install -r requirements.txt
+```
+
+## Execution
+
+Run the complete pipeline:
 ```bash
 python main.py
 ```
 
-This will perform the following steps:
-1.  Load the raw training and testing data from the `./data/` directory.
-2.  Apply feature engineering and save the processed data.
-3.  Train a CatBoost regression model.
-4.  Save the trained model to `./data/model_catboost3.sav`.
-5.  Generate SHAP plots for model interpretability.
-6.  Create a `submission.csv` file containing the predictions for the test set.
+The pipeline executes the following operations:
+1. Loads raw training and test datasets from `./data/`
+2. Performs feature engineering including outlier removal, feature unpacking, and categorical encoding
+3. Exports processed datasets to `train_fe.csv` and `test_fe.csv`
+4. Trains CatBoost regressor with optimized hyperparameters
+5. Serializes trained model to `./data/model_catboost.sav`
+6. Generates SHAP interpretability plots
+7. Produces final predictions in `submission.csv`
+
+## Results and Performance
+
+The optimized CatBoost model achieved strong predictive performance through:
+- Effective handling of 200+ engineered features including high-cardinality categorical variables
+- Optimal convergence at 7,247 boosting iterations with MAE-based optimization
+- Robust generalization through L2 regularization and feature subsampling
+- Transparent predictions validated through SHAP analysis
+
+## Skills Demonstrated
+
+**Machine Learning**: Gradient boosting, hyperparameter optimization, cross-validation, ensemble methods  
+**Data Engineering**: Feature engineering, one-hot encoding, data cleaning, outlier detection  
+**Model Interpretation**: SHAP analysis, feature importance, explainable AI  
+**Software Engineering**: Modular code design, version control, reproducible pipelines  
+**Python Development**: Pandas, NumPy, scikit-learn, CatBoost, SHAP, Matplotlib
 
 
 
