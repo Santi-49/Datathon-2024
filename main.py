@@ -126,7 +126,7 @@ def unpack_lists(train, test, list_features):
         new_features_df_test = expand_list_column(test, col)
 
         #Threshold for filtering columns
-        threshold = 0#(train.shape[0] * 1) / 100
+        threshold = (train.shape[0] * 1) / 100
 
         # Filter train columns based on threshold
         columns_to_keep_train = new_features_df_train.columns[new_features_df_train.sum() > threshold]
